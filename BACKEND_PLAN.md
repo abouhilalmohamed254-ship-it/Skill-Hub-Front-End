@@ -1,12 +1,15 @@
-# Skill Hub - Laravel Backend Plan
+# Skill Hub - Next.js + Supabase Migration Plan
 
 ## 1. Project Overview
 
-The Skill Hub frontend is a Vite + React 19 SPA that currently uses Redux for state management with hardcoded data and a local `json-server` for mock persistence. This plan outlines a Laravel 11 REST API backend to replace the mock data layer with real authentication and persistent course management.
+The Skill Hub frontend is currently a **Vite + React 19 SPA** with Redux Toolkit, React Router (HashRouter), and Tailwind CSS v4. It uses hardcoded data and client-side credential checking. This plan outlines a full migration to **Next.js 16 (App Router) + Supabase** so that the frontend and backend live in the same repository with real authentication and persistent database storage.
 
-**Backend scope:**
-- Admin-only authentication (single role) via Laravel Sanctum (token-based SPA auth)
-- Full Course CRUD API with validation, filtering, and pagination
+**Migration scope:**
+- Migrate from Vite + React Router to Next.js App Router
+- Replace hardcoded Redux state with Supabase PostgreSQL database
+- Replace client-side auth (`admin`/`admin`) with Supabase Auth
+- Maintain the exact same UI/UX and design language
+- One-click deploy to Vercel
 
 ---
 
@@ -18,502 +21,388 @@ The Skill Hub frontend is a Vite + React 19 SPA that currently uses Redux for st
 | Framework | Vite + React 19 |
 | State | Redux Toolkit (3 slices: courses, admin, preferences) |
 | Routing | React Router v7 (HashRouter) |
-| HTTP | Axios |
+| HTTP | Axios (installed but not used) |
 | Styling | Tailwind CSS v4, Lucide icons, Framer Motion |
+| Animations | `motion` (framer-motion), custom RotatingText component |
+| Font | Gabarito (via CSS) |
 
 ### Current Data Flow
-- **Courses**: Hardcoded in `courseSlice.js` initial state (10 courses). CRUD via Redux reducers only (no API calls to persist).
-- **Auth**: Hardcoded credentials (`admin` / `admin`) compared client-side in `loginForm.jsx`. No tokens, no sessions.
-- **json-server**: A `db.json` with 2 courses exists but is not actively used by the main app logic.
+- **Courses**: 10 courses hardcoded in `courseSlice.js` initial state. CRUD via Redux reducers only -- no persistence.
+- **Auth**: Hardcoded credentials (`admin`/`admin`) compared client-side in `loginForm.jsx`. `adminSlice.js` stores `loggedIn: true/false`.
+- **Preferences**: `preferenceSlice.js` stores UI preferences (`catalogueView`, `dashboardView`). UI-only, no persistence needed.
+- **json-server**: A `db.json` with 2 courses exists but is unused by the main app.
 
 ### Existing Routes (Frontend)
-| Route | Page | Auth Required |
-|-------|------|--------------|
-| `/` | Home (landing page) | No |
-| `/catalogue` | Public course catalogue | No |
-| `/course/:id` | Course detail page | No |
-| `/course/add` | Add new course form | Yes (admin) |
-| `/course/edit/:id` | Edit course form | Yes (admin) |
-| `/dashboard` | Admin dashboard | Yes (admin) |
-| `/about` | About us page | No |
+| Route | Page | Component | Auth Required |
+|-------|------|-----------|--------------|
+| `/#/` | Home (landing) | `home.jsx` | No |
+| `/#/catalogue` | Public catalogue | `catalogue.jsx` | No |
+| `/#/course/:id` | Course detail | `coursePage.jsx` | No |
+| `/#/course/add` | Add course form | `courseAdd.jsx` | Yes (admin) |
+| `/#/course/edit/:id` | Edit course form | `courseEdit.jsx` | Yes (admin) |
+| `/#/dashboard` | Admin dashboard | `dashboard.jsx` | Yes (admin) |
+| `/#/about` | About us | `aboutUs.jsx` | No |
+
+### Current Components
+| Component | File | Purpose |
+|-----------|------|---------|
+| Navbar | `navbar.jsx` | Sidebar nav (desktop) / bottom nav (mobile), login/logout, theme toggle |
+| LoginForm | `loginForm.jsx` | Modal login overlay with username/password |
+| FilterBar | `filterBar.jsx` | Course filter sidebar/sheet (category, level, price, certification) |
+| CatalogueCardBoardView | `catalogueCardBoardView.jsx` | Course card for catalogue grid |
+| RotatingText | `RotatingText.jsx` | Animated text rotation on home page |
+| ThemeToggle | `themeToggle.jsx` | Dark/light mode toggle button |
+
+### Assets
+- `src/assets/insayd.jpg` - Team member photo
+- `src/assets/user.png` - Default user photo
+- `src/assets/react.png` - React logo
+- `src/assets/redux.png` - Redux logo
+- `src/assets/tailwind.png` - Tailwind logo
 
 ---
 
-## 3. Laravel Backend Architecture
+## 3. New Architecture: Next.js + Supabase
 
 ### 3.1 Tech Stack
 
 | Component | Choice | Reason |
 |-----------|--------|--------|
-| Framework | Laravel 11 | User preference, mature PHP framework |
-| Auth | Laravel Sanctum | Token-based SPA authentication, first-party Laravel package |
-| Database | MySQL 8 / PostgreSQL 15 | Standard relational DB for structured course data |
-| API Format | JSON REST | Matches existing Axios usage in frontend |
-| CORS | Laravel CORS middleware | Required for cross-origin SPA requests |
+| Framework | Next.js 16 (App Router) | Full-stack React framework, API routes + SSR in one codebase |
+| Database | Supabase (PostgreSQL) | Managed database with built-in auth, one-click integration |
+| Auth | Supabase Auth | Email/password admin login, secure session management via cookies |
+| Styling | Tailwind CSS v4 | Already used, seamless migration |
+| Icons | Lucide React | Already used |
+| Animations | Framer Motion (`motion`) | Already used |
+| Deployment | Vercel | One-click deploy, automatic env var injection |
 
-### 3.2 Project Structure
+### 3.2 Project Structure (Next.js App Router)
 
 ```
-skill-hub-api/
+skill-hub/
 ├── app/
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── AuthController.php
-│   │   │   └── CourseController.php
-│   │   ├── Middleware/
-│   │   │   └── (Sanctum default middleware)
-│   │   └── Requests/
-│   │       ├── LoginRequest.php
-│   │       ├── StoreCourseRequest.php
-│   │       └── UpdateCourseRequest.php
-│   └── Models/
-│       ├── User.php (admin)
-│       └── Course.php
-├── database/
-│   ├── migrations/
-│   │   ├── xxxx_create_users_table.php
-│   │   └── xxxx_create_courses_table.php
-│   └── seeders/
-│       ├── AdminSeeder.php
-│       └── CourseSeeder.php
-├── routes/
-│   └── api.php
-├── config/
-│   ├── cors.php
-│   └── sanctum.php
-└── .env
+│   ├── layout.tsx                 # Root layout (replaces App.jsx wrapper)
+│   ├── page.tsx                   # Home page (from home.jsx)
+│   ├── globals.css                # Global styles (from index.css)
+│   ├── catalogue/
+│   │   └── page.tsx               # Catalogue page (from catalogue.jsx)
+│   ├── course/
+│   │   ├── [id]/
+│   │   │   └── page.tsx           # Course detail (from coursePage.jsx)
+│   │   ├── add/
+│   │   │   └── page.tsx           # Add course (from courseAdd.jsx)
+│   │   └── edit/
+│   │       └── [id]/
+│   │           └── page.tsx       # Edit course (from courseEdit.jsx)
+│   ├── dashboard/
+│   │   └── page.tsx               # Admin dashboard (from dashboard.jsx)
+│   ├── about/
+│   │   └── page.tsx               # About us (from aboutUs.jsx)
+│   └── api/
+│       └── courses/
+│           ├── route.ts           # GET (list) + POST (create)
+│           └── [id]/
+│               └── route.ts       # GET (single) + PUT (update) + DELETE
+├── components/
+│   ├── navbar.tsx                 # Sidebar/bottom nav
+│   ├── login-form.tsx             # Login modal (Supabase Auth)
+│   ├── filter-bar.tsx             # Course filter panel
+│   ├── catalogue-card.tsx         # Course card
+│   ├── rotating-text.tsx          # Animated text (from RotatingText.jsx)
+│   └── theme-toggle.tsx           # Dark/light toggle
+├── lib/
+│   ├── supabase/
+│   │   ├── client.ts              # Browser Supabase client
+│   │   ├── server.ts              # Server Supabase client
+│   │   └── middleware.ts          # Auth session refresh
+│   └── types.ts                   # TypeScript types (Course, etc.)
+├── public/
+│   └── images/                    # Static assets (team photos, logos)
+├── scripts/
+│   └── setup-database.sql         # Supabase migration script
+├── middleware.ts                   # Next.js middleware for auth protection
+└── package.json
 ```
 
 ---
 
-## 4. Database Schema
+## 4. Database Schema (Supabase PostgreSQL)
 
-### 4.1 `users` Table (Admin)
+### 4.1 `courses` Table
 
-| Column | Type | Constraints | Notes |
-|--------|------|------------|-------|
-| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | |
-| name | VARCHAR(255) | NOT NULL | Admin display name |
-| email | VARCHAR(255) | NOT NULL, UNIQUE | Used for login |
-| password | VARCHAR(255) | NOT NULL | Bcrypt hashed |
-| remember_token | VARCHAR(100) | NULLABLE | Laravel default |
-| created_at | TIMESTAMP | NULLABLE | |
-| updated_at | TIMESTAMP | NULLABLE | |
+```sql
+CREATE TABLE courses (
+  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title         TEXT NOT NULL,
+  category      TEXT NOT NULL CHECK (category IN ('Development', 'Design', 'Marketing', 'Business', 'Languages')),
+  level         TEXT NOT NULL CHECK (level IN ('Beginner', 'Intermediate', 'Advanced', 'Expert')),
+  status        TEXT NOT NULL DEFAULT 'Draft' CHECK (status IN ('Draft', 'Archive', 'Public')),
+  instructor    TEXT NOT NULL,
+  price         INTEGER NOT NULL DEFAULT 0,
+  duration      INTEGER NOT NULL DEFAULT 0,
+  description   TEXT,
+  students_number INTEGER NOT NULL DEFAULT 0,
+  certification TEXT NOT NULL DEFAULT 'Not Certificated' CHECK (certification IN ('Certificated', 'Not Certificated')),
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+```
 
-**Seed data:** One admin user seeded via `AdminSeeder.php`
+### 4.2 Row Level Security (RLS)
 
-### 4.2 `courses` Table
+```sql
+-- Enable RLS
+ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
 
-| Column | Type | Constraints | Notes |
-|--------|------|------------|-------|
-| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | |
-| title | VARCHAR(255) | NOT NULL | Course name |
-| category | VARCHAR(100) | NOT NULL | Enum-like: Development, Design, Marketing, Business, Languages |
-| level | VARCHAR(50) | NOT NULL | Enum-like: Beginner, Intermediate, Advanced, Expert |
-| status | VARCHAR(50) | NOT NULL, DEFAULT 'Draft' | Draft or Public |
-| instructor | VARCHAR(255) | NOT NULL | Instructor name |
-| price | DECIMAL(10,2) | NOT NULL, DEFAULT 0 | Course price |
-| duration | INTEGER UNSIGNED | NOT NULL | Duration in minutes |
-| description | TEXT | NULLABLE | Course description |
-| students_number | INTEGER UNSIGNED | NOT NULL, DEFAULT 0 | Enrolled students count |
-| certification | VARCHAR(50) | NOT NULL, DEFAULT 'Not Certificated' | "Certificated" or "Not Certificated" |
-| created_at | TIMESTAMP | NULLABLE | |
-| updated_at | TIMESTAMP | NULLABLE | |
+-- Public: Anyone can read public courses
+CREATE POLICY "Anyone can view public courses"
+  ON courses FOR SELECT
+  USING (status = 'Public');
 
-**Note:** The frontend uses `studentsNumber` (camelCase). The API response will use a Resource/Transformer to map `students_number` (snake_case) to `studentsNumber` (camelCase) for frontend compatibility.
+-- Admin: Authenticated users can read all courses
+CREATE POLICY "Authenticated users can view all courses"
+  ON courses FOR SELECT
+  TO authenticated
+  USING (true);
+
+-- Admin: Authenticated users can insert
+CREATE POLICY "Authenticated users can create courses"
+  ON courses FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+-- Admin: Authenticated users can update
+CREATE POLICY "Authenticated users can update courses"
+  ON courses FOR UPDATE
+  TO authenticated
+  USING (true);
+
+-- Admin: Authenticated users can delete
+CREATE POLICY "Authenticated users can delete courses"
+  ON courses FOR DELETE
+  TO authenticated
+  USING (true);
+```
+
+### 4.3 Seed Data
+
+Seed the 10 courses from the current `courseSlice.js` to maintain data consistency:
+
+```sql
+INSERT INTO courses (title, category, level, status, instructor, price, duration, description, students_number, certification) VALUES
+('Advanced React Patterns', 'Development', 'Advanced', 'Public', 'Sarah Chen', 850, 120, 'Master advanced React patterns including hooks, context, and performance optimization', 320, 'Certificated'),
+('UI/UX Fundamentals', 'Design', 'Beginner', 'Public', 'Alex Morgan', 600, 60, 'Learn the core principles of user interface and user experience design', 450, 'Certificated'),
+('Digital Marketing Strategy', 'Marketing', 'Intermediate', 'Public', 'Mohammed Alami', 700, 80, 'Develop comprehensive digital marketing strategies for modern businesses', 280, 'Not Certificated'),
+('Python for Data Science', 'Development', 'Intermediate', 'Public', 'Dr. Lisa Wang', 950, 100, 'Use Python libraries for data analysis, visualization, and machine learning', 510, 'Certificated'),
+('Business Analytics', 'Business', 'Intermediate', 'Public', 'James Peterson', 800, 90, 'Make data-driven business decisions using analytics tools and frameworks', 195, 'Certificated'),
+('Spanish Conversation', 'Languages', 'Beginner', 'Public', 'Maria Garcia', 350, 50, 'Build conversational Spanish skills through interactive practice sessions', 670, 'Not Certificated'),
+('Brand Identity Design', 'Design', 'Expert', 'Public', 'David Kim', 1200, 150, 'Create compelling brand identities from concept to final deliverables', 180, 'Certificated'),
+('Startup Essentials', 'Business', 'Beginner', 'Public', 'Fatima Zahir', 550, 70, 'Learn the fundamentals of launching and growing a successful startup', 420, 'Not Certificated'),
+('SEO Mastery', 'Marketing', 'Advanced', 'Public', 'Omar Benali', 750, 85, 'Advanced search engine optimization techniques for maximum visibility', 290, 'Certificated'),
+('French Grammar Intensive', 'Languages', 'Intermediate', 'Public', 'Claire Dubois', 450, 65, 'Master French grammar rules through structured lessons and exercises', 380, 'Certificated');
+```
+
+### 4.4 Admin User
+
+Created via Supabase Auth (not a database table):
+- **Email:** `admin@skillhub.com`
+- **Password:** Set during Supabase dashboard setup or via seed script
 
 ---
 
-## 5. API Endpoints
+## 5. Authentication Flow
 
-### Base URL: `http://localhost:8000/api`
-
-### 5.1 Authentication Endpoints
-
-| Method | Endpoint | Description | Auth | Request Body |
-|--------|----------|-------------|------|-------------|
-| POST | `/login` | Admin login | No | `{ email, password }` |
-| POST | `/logout` | Admin logout | Yes | - |
-| GET | `/user` | Get authenticated user | Yes | - |
-
-#### POST `/login`
-
-**Request:**
-```json
-{
-  "email": "admin@skillhub.com",
-  "password": "password"
-}
+### Current (Client-side only)
+```
+User enters admin/admin -> compare against Redux state -> set loggedIn: true
 ```
 
-**Response (200):**
-```json
-{
-  "user": {
-    "id": 1,
-    "name": "Admin",
-    "email": "admin@skillhub.com"
-  },
-  "token": "1|abc123..."
-}
+### New (Supabase Auth)
+```
+User enters email/password -> Supabase Auth API -> session cookie set -> middleware validates on protected routes
 ```
 
-**Response (401):**
-```json
-{
-  "message": "Invalid credentials"
-}
-```
+### Protected Routes (middleware.ts)
+The following routes require authentication:
+- `/dashboard`
+- `/course/add`
+- `/course/edit/*`
 
-#### POST `/logout`
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response (200):**
-```json
-{
-  "message": "Logged out successfully"
-}
-```
-
-#### GET `/user`
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response (200):**
-```json
-{
-  "id": 1,
-  "name": "Admin",
-  "email": "admin@skillhub.com"
-}
-```
+Unauthenticated users will be redirected to `/` with a login prompt.
 
 ---
 
-### 5.2 Course Endpoints
+## 6. API Routes (Next.js Route Handlers)
 
-| Method | Endpoint | Description | Auth | Notes |
-|--------|----------|-------------|------|-------|
-| GET | `/courses` | List all courses | No | Supports filtering, search, pagination |
-| GET | `/courses/{id}` | Get single course | No | |
-| POST | `/courses` | Create course | Yes | Validated |
-| PUT | `/courses/{id}` | Update course | Yes | Validated |
-| DELETE | `/courses/{id}` | Delete course | Yes | |
+### 6.1 Course API
 
-#### GET `/courses`
+All course operations go through Supabase client directly (no separate API routes needed for simple CRUD). However, we can use Server Actions or Route Handlers for mutations:
 
-**Query Parameters:**
-| Param | Type | Description | Example |
-|-------|------|-------------|---------|
-| `category` | string | Filter by category | `?category=Design` |
-| `level` | string | Filter by level | `?level=Beginner` |
-| `status` | string | Filter by status | `?status=Public` |
-| `search` | string | Search title/description | `?search=react` |
-| `sort_by` | string | Sort field | `?sort_by=price` |
-| `sort_order` | string | Sort direction | `?sort_order=asc` |
-| `per_page` | int | Items per page | `?per_page=10` |
-| `page` | int | Page number | `?page=2` |
+#### Server Actions Approach (Recommended)
 
-**Response (200):**
-```json
-{
-  "data": [
-    {
-      "id": 1,
-      "title": "Advanced React Patterns",
-      "category": "Development",
-      "level": "Advanced",
-      "status": "Public",
-      "instructor": "Sarah Chen",
-      "price": 850,
-      "duration": 120,
-      "description": "Master advanced React patterns...",
-      "studentsNumber": 320,
-      "certification": "Certificated"
-    }
-  ],
-  "meta": {
-    "current_page": 1,
-    "last_page": 2,
-    "per_page": 10,
-    "total": 12
-  }
+```typescript
+// lib/actions/courses.ts
+'use server'
+
+export async function getCourses(filters?) {
+  // Query Supabase with optional filters
+  // Returns courses array
+}
+
+export async function getCourse(id: string) {
+  // Query single course by ID
+}
+
+export async function createCourse(formData: FormData) {
+  // Validate auth, insert into Supabase
+}
+
+export async function updateCourse(id: string, formData: FormData) {
+  // Validate auth, update in Supabase
+}
+
+export async function deleteCourse(id: string) {
+  // Validate auth, delete from Supabase
 }
 ```
 
-#### GET `/courses/{id}`
+### 6.2 Auth Actions
 
-**Response (200):**
-```json
-{
-  "data": {
-    "id": 1,
-    "title": "Advanced React Patterns",
-    "category": "Development",
-    "level": "Advanced",
-    "status": "Public",
-    "instructor": "Sarah Chen",
-    "price": 850,
-    "duration": 120,
-    "description": "Master advanced React patterns...",
-    "studentsNumber": 320,
-    "certification": "Certificated"
-  }
+```typescript
+// lib/actions/auth.ts
+'use server'
+
+export async function signIn(formData: FormData) {
+  // Supabase Auth signInWithPassword
+  // Redirect to /dashboard on success
 }
-```
 
-**Response (404):**
-```json
-{
-  "message": "Course not found"
-}
-```
-
-#### POST `/courses`
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Request:**
-```json
-{
-  "title": "New Course",
-  "category": "Development",
-  "level": "Beginner",
-  "status": "Draft",
-  "instructor": "Jane Doe",
-  "price": 500,
-  "duration": 90,
-  "description": "A brand new course",
-  "studentsNumber": 0,
-  "certification": "Certificated"
-}
-```
-
-**Validation Rules:**
-| Field | Rules |
-|-------|-------|
-| title | required, string, max:255 |
-| category | required, string, in:Development,Design,Marketing,Business,Languages |
-| level | required, string, in:Beginner,Intermediate,Advanced,Expert |
-| status | required, string, in:Draft,Public |
-| instructor | required, string, max:255 |
-| price | required, numeric, min:0 |
-| duration | required, integer, min:1 |
-| description | nullable, string |
-| studentsNumber | required, integer, min:0 |
-| certification | required, string, in:Certificated,Not Certificated |
-
-**Response (201):**
-```json
-{
-  "data": {
-    "id": 12,
-    "title": "New Course",
-    "category": "Development",
-    ...
-  },
-  "message": "Course created successfully"
-}
-```
-
-**Response (422):**
-```json
-{
-  "message": "Validation failed",
-  "errors": {
-    "title": ["The title field is required."],
-    "category": ["The selected category is invalid."]
-  }
-}
-```
-
-#### PUT `/courses/{id}`
-
-Same request body and validation as POST. Returns updated course.
-
-**Response (200):**
-```json
-{
-  "data": { ... },
-  "message": "Course updated successfully"
-}
-```
-
-#### DELETE `/courses/{id}`
-
-**Headers:** `Authorization: Bearer {token}`
-
-**Response (200):**
-```json
-{
-  "message": "Course deleted successfully"
+export async function signOut() {
+  // Supabase Auth signOut
+  // Redirect to /
 }
 ```
 
 ---
 
-## 6. Implementation Details
+## 7. Page-by-Page Migration Map
 
-### 6.1 CourseResource (API Response Mapping)
+### 7.1 Home Page (`/`)
+| Current | New |
+|---------|-----|
+| `src/pages/home.jsx` | `app/page.tsx` |
+| Client component with Redux | Client component (no Redux needed) |
+| `useSelector` for login state | `useAuth()` hook or server-side session check |
+| RotatingText animation | Same, preserved as-is |
+| Floating Lucide icons | Same, preserved as-is |
 
-A Laravel API Resource to transform snake_case DB columns to camelCase for frontend compatibility:
+### 7.2 Catalogue (`/catalogue`)
+| Current | New |
+|---------|-----|
+| `src/pages/catalogue.jsx` | `app/catalogue/page.tsx` |
+| `useSelector` reads all courses from Redux | Server Component fetches from Supabase |
+| Client-side filtering | Client-side filtering preserved (or move to server with search params) |
+| FilterBar as client component | Same, passed courses as prop |
 
-```php
-// app/Http/Resources/CourseResource.php
+### 7.3 Course Detail (`/course/:id`)
+| Current | New |
+|---------|-----|
+| `src/pages/coursePage.jsx` | `app/course/[id]/page.tsx` |
+| `useSelector` + `useParams` | Server Component with `params.id`, direct Supabase query |
+| Client-side course lookup | Server-side data fetching |
 
-class CourseResource extends JsonResource
-{
-    public function toArray($request): array
-    {
-        return [
-            'id'             => (string) $this->id,  // Frontend expects string IDs
-            'title'          => $this->title,
-            'category'       => $this->category,
-            'level'          => $this->level,
-            'status'         => $this->status,
-            'instructor'     => $this->instructor,
-            'price'          => (int) $this->price,
-            'duration'       => $this->duration,
-            'description'    => $this->description,
-            'studentsNumber' => $this->students_number,
-            'certification'  => $this->certification,
-        ];
-    }
+### 7.4 Add Course (`/course/add`)
+| Current | New |
+|---------|-----|
+| `src/pages/courseAdd.jsx` | `app/course/add/page.tsx` |
+| `dispatch(createCourse())` | Server Action `createCourse()` |
+| Client-side validation | Same client-side validation + server-side validation |
+| `Navigate` guard | Middleware auth guard |
+
+### 7.5 Edit Course (`/course/edit/:id`)
+| Current | New |
+|---------|-----|
+| `src/pages/courseEdit.jsx` | `app/course/edit/[id]/page.tsx` |
+| `useSelector` to find course | Server Component fetches course by ID |
+| `dispatch(editCourse())` | Server Action `updateCourse()` |
+| `Navigate` guard | Middleware auth guard |
+
+### 7.6 Dashboard (`/dashboard`)
+| Current | New |
+|---------|-----|
+| `src/pages/dashboard.jsx` | `app/dashboard/page.tsx` |
+| `useSelector` reads all courses | Server Component fetches all courses |
+| Statistics computed in `useEffect` | Computed server-side |
+| `dispatch(deleteCourse())` | Server Action `deleteCourse()` |
+| `Navigate` guard | Middleware auth guard |
+
+### 7.7 About (`/about`)
+| Current | New |
+|---------|-----|
+| `src/pages/aboutUs.jsx` | `app/about/page.tsx` |
+| Static content with images | Static content, images moved to `/public/images/` |
+| No data fetching | No data fetching |
+
+---
+
+## 8. TypeScript Types
+
+```typescript
+// lib/types.ts
+
+export interface Course {
+  id: string
+  title: string
+  category: 'Development' | 'Design' | 'Marketing' | 'Business' | 'Languages'
+  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert'
+  status: 'Draft' | 'Archive' | 'Public'
+  instructor: string
+  price: number
+  duration: number
+  description: string | null
+  students_number: number
+  certification: 'Certificated' | 'Not Certificated'
+  created_at: string
+  updated_at: string
+}
+
+export interface CourseFilters {
+  category?: string
+  level?: string
+  certification?: string
+  priceMin?: number
+  priceMax?: number
 }
 ```
 
-### 6.2 CORS Configuration
-
-```php
-// config/cors.php
-'allowed_origins' => [
-    'http://localhost:5173',  // Vite dev server
-    'https://your-production-domain.com',
-],
-'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-'allowed_headers' => ['Content-Type', 'Authorization', 'Accept'],
-'supports_credentials' => true,
-```
-
-### 6.3 Route Definitions
-
-```php
-// routes/api.php
-
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\CourseController;
-
-// Public routes
-Route::post('/login', [AuthController::class, 'login']);
-Route::get('/courses', [CourseController::class, 'index']);
-Route::get('/courses/{course}', [CourseController::class, 'show']);
-
-// Protected routes (admin only)
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', [AuthController::class, 'user']);
-    Route::post('/courses', [CourseController::class, 'store']);
-    Route::put('/courses/{course}', [CourseController::class, 'update']);
-    Route::delete('/courses/{course}', [CourseController::class, 'destroy']);
-});
-```
-
-### 6.4 Database Seeders
-
-**AdminSeeder:**
-```php
-User::create([
-    'name'     => 'Admin',
-    'email'    => 'admin@skillhub.com',
-    'password' => Hash::make('password'),  // Change in production!
-]);
-```
-
-**CourseSeeder:** Seed the 10 courses from the current `courseSlice.js` initial state to maintain data consistency during migration.
-
 ---
 
-## 7. Frontend Changes Required
+## 9. What Gets Removed
 
-After the Laravel backend is running, the React frontend needs these modifications:
+These libraries/files are no longer needed after migration:
 
-### 7.1 API Service Layer
+| Removed | Reason |
+|---------|--------|
+| `react-router-dom` | Replaced by Next.js App Router file-based routing |
+| `@reduxjs/toolkit` + `react-redux` | Replaced by Server Components + Supabase direct queries |
+| `redux-ui` | Unused |
+| `json-server` | Replaced by Supabase |
+| `axios` | Replaced by Supabase client / fetch |
+| `src/redux/*` (all slices) | No more client-side state for data |
+| `db.json` | Replaced by Supabase database |
+| `vite.config.js` | Replaced by `next.config.mjs` |
+| `server.cjs` | No longer needed |
+| `cors` package | Handled by Next.js |
 
-Create an Axios instance with base URL and token interceptor:
-
-```
-src/
-├── api/
-│   ├── axiosInstance.js    // Base config, interceptors, token handling
-│   ├── authApi.js          // login(), logout(), getUser()
-│   └── courseApi.js        // getCourses(), getCourse(), createCourse(), updateCourse(), deleteCourse()
-```
-
-### 7.2 Redux Slice Updates
-
-- **adminSlice.js**: Replace hardcoded credentials with async thunks that call the auth API. Store token in memory (not localStorage for security). Track loading/error states.
-- **courseSlice.js**: Replace hardcoded initial state with async thunks that fetch from API. Add loading/error states for CRUD operations.
-- **preferenceSlice.js**: No changes needed (UI-only state).
-
-### 7.3 Component Updates
-
-| Component | Change |
-|-----------|--------|
-| `loginForm.jsx` | Replace client-side credential check with API call to `POST /login`. Store returned token. |
-| `dashboard.jsx` | Fetch courses from API on mount instead of reading Redux initial state. |
-| `catalogue.jsx` | Fetch public courses from API. Add server-side filtering support. |
-| `coursePage.jsx` | Fetch single course from API by ID. |
-| `courseAdd.jsx` | Submit form data to `POST /courses` with auth token. |
-| `courseEdit.jsx` | Fetch course data from API, submit updates to `PUT /courses/{id}`. |
-
----
-
-## 8. Setup Commands
-
-```bash
-# 1. Create Laravel project
-composer create-project laravel/laravel skill-hub-api
-
-# 2. Install Sanctum
-composer require laravel/sanctum
-php artisan install:api
-
-# 3. Configure .env (database credentials)
-# DB_CONNECTION=mysql
-# DB_HOST=127.0.0.1
-# DB_PORT=3306
-# DB_DATABASE=skillhub
-# DB_USERNAME=root
-# DB_PASSWORD=
-
-# 4. Run migrations
-php artisan migrate
-
-# 5. Seed database
-php artisan db:seed
-
-# 6. Start server
-php artisan serve
-# API will be available at http://localhost:8000/api
-```
-
----
-
-## 9. Environment Variables
-
-### Laravel `.env`
-```
-APP_URL=http://localhost:8000
-FRONTEND_URL=http://localhost:5173
-SANCTUM_STATEFUL_DOMAINS=localhost:5173
-SESSION_DOMAIN=localhost
-```
-
-### React Frontend `.env`
-```
-VITE_API_BASE_URL=http://localhost:8000/api
-```
+### What Gets Preserved
+| Preserved | Notes |
+|-----------|-------|
+| All Tailwind CSS classes | Exact same styling |
+| Lucide React icons | Same usage |
+| Framer Motion animations | Same RotatingText, hover effects |
+| Gabarito font | Same typography |
+| Dark mode system | Same `dark:` variant approach |
+| All UI components | Same visual design, just adapted for Next.js patterns |
 
 ---
 
@@ -521,9 +410,23 @@ VITE_API_BASE_URL=http://localhost:8000/api
 
 | # | Milestone | Description |
 |---|-----------|-------------|
-| 1 | Laravel project setup | Create project, install Sanctum, configure CORS and database |
-| 2 | Database migrations & seeders | Create users and courses tables, seed admin + 10 courses |
-| 3 | Auth endpoints | Implement login, logout, get user with Sanctum tokens |
-| 4 | Course CRUD endpoints | Implement all 5 course endpoints with validation and resources |
-| 5 | Frontend API integration | Create Axios service layer, update Redux slices with async thunks |
-| 6 | Frontend component updates | Wire up all components to use API calls instead of local state |
+| 1 | **Supabase Setup** | Connect Supabase integration, create `courses` table with RLS policies, seed 10 courses, set up admin user |
+| 2 | **Next.js Scaffold + Layout** | Create root layout with Gabarito font, dark mode, Navbar component. Set up middleware for auth-protected routes. |
+| 3 | **Home + About Pages** | Migrate static pages (home with RotatingText animation, about with team info). No database needed. |
+| 4 | **Catalogue + Course Detail** | Migrate catalogue page with server-side data fetching from Supabase. Migrate course detail page. Preserve FilterBar as client component. |
+| 5 | **Auth (Login/Logout)** | Implement Supabase Auth login modal, logout, session management. Wire up Navbar login/logout buttons. |
+| 6 | **Dashboard + Course CRUD** | Migrate dashboard with server-fetched statistics. Implement add/edit/delete course forms with Server Actions backed by Supabase. |
+
+---
+
+## 11. Environment Variables
+
+These will be automatically set when the Supabase integration is connected:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...  (for server-side admin operations)
+```
+
+No manual configuration needed -- Vercel handles it all.
