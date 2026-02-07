@@ -1,0 +1,30 @@
+"use client"
+
+import { Sun, Moon } from "lucide-react"
+import { useState, useEffect } from "react"
+
+export default function ThemeToggle() {
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const dark = window.matchMedia("(prefers-color-scheme: dark)").matches
+    setIsDark(dark)
+    document.documentElement.classList.toggle("dark", dark)
+  }, [])
+
+  function toggle() {
+    const next = !isDark
+    setIsDark(next)
+    document.documentElement.classList.toggle("dark", next)
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      className="flex items-center justify-center h-10 w-10 rounded-lg bg-neutral-200/60 dark:bg-neutral-800/60 backdrop-blur-sm border border-neutral-300/50 dark:border-neutral-700/50 text-neutral-900 dark:text-neutral-50 transition-all duration-200 hover:bg-neutral-300/60 dark:hover:bg-neutral-700/60 active:scale-95 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-600"
+      aria-label="Toggle theme"
+    >
+      {isDark ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
+    </button>
+  )
+}

@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-sans: 'Gabarito', 'Gabarito Fallback', sans-serif;
+}
+
+* {
+  font-family: var(--font-sans);
+}
+
+button {
+  cursor: pointer;
+}
