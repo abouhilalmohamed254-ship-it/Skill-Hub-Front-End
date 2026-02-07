@@ -35,19 +35,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh]">
+    <div className="flex items-center justify-center min-h-[80vh] p-4">
       <div className="w-full max-w-md">
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
+        <div className="bg-white/80 dark:bg-neutral-800/50 backdrop-blur-sm border border-neutral-200/60 dark:border-neutral-700/60 rounded-2xl p-8 shadow-lg dark:shadow-black/30">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary/10 text-primary mb-4">
-              <LogIn className="h-7 w-7" />
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-neutral-100 dark:bg-neutral-800 mb-4">
+              <LogIn className="h-7 w-7 text-neutral-700 dark:text-neutral-300" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
-            <p className="text-muted-foreground mt-1">Sign in to manage your courses</p>
+            <h1 className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">Welcome Back</h1>
+            <p className="text-neutral-500 dark:text-neutral-400 mt-1">Sign in to manage your courses</p>
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3 mb-6 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
+            <div className="flex items-center gap-2 p-3 mb-6 bg-red-50/80 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-lg text-red-600 dark:text-red-400 text-sm">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -55,7 +55,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
-              <label htmlFor="email" className="text-sm font-medium text-foreground">
+              <label htmlFor="email" className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                 Email
               </label>
               <input
@@ -65,12 +65,12 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="admin@skillhub.com"
-                className="w-full px-4 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                className="w-full px-4 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-50 placeholder:text-neutral-400 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-600 transition-colors"
               />
             </div>
 
             <div className="flex flex-col gap-2">
-              <label htmlFor="password" className="text-sm font-medium text-foreground">
+              <label htmlFor="password" className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                 Password
               </label>
               <div className="relative">
@@ -81,12 +81,12 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="Enter your password"
-                  className="w-full px-4 py-3 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors pr-12"
+                  className="w-full px-4 py-3 rounded-xl bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 text-neutral-900 dark:text-neutral-50 placeholder:text-neutral-400 dark:placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-600 transition-colors pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -97,10 +97,10 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 mt-2 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 mt-2 bg-gradient-to-br from-neutral-900 to-neutral-950 dark:from-neutral-100 dark:to-neutral-50 text-neutral-50 dark:text-neutral-900 rounded-xl font-semibold shadow-md dark:shadow-black/20 hover:shadow-lg hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
             >
               {loading ? (
-                <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                <div className="h-5 w-5 border-2 border-neutral-50/30 dark:border-neutral-900/30 border-t-neutral-50 dark:border-t-neutral-900 rounded-full animate-spin" />
               ) : (
                 <>
                   <LogIn className="h-5 w-5" />

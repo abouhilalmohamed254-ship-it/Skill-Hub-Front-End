@@ -1,62 +1,28 @@
-"use client"
+import { createClient } from "@/lib/supabase/server"
+import { rowToCourse } from "@/lib/types"
+import type { CourseRow } from "@/lib/types"
+import { redirect } from "next/navigation"
+import EditCourseClient from "./edit-client"
 
-import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
-import { CourseForm } from "@/components/course-form"
-import type { Course } from "@/lib/types"
-import { Loader2 } from "lucide-react"
+export default async function CourseEditPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-export default function CourseEditPage() {
-  const params = useParams()
-  const id = params.id as string
-  const [course, setCourse] = useState<Course | null>(null)
-  const [loading, setLoading] = useState(true)
+  if (!user) redirect("/")
 
-  useEffect(() => {
-    async function fetchCourse() {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from("courses")
-        .select("*")
-        .eq("id", id)
-        .single()
+  const { data } = await supabase
+    .from("courses")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single()
 
-      if (data) {
-        setCourse({
-          id: data.id,
-          title: data.title,
-          category: data.category,
-          level: data.level,
-          status: data.status,
-          instructor: data.instructor,
-          price: data.price,
-          duration: data.duration,
-          description: data.description,
-          studentsNumber: data.students_number,
-          certification: data.certification,
-        })
-      }
-      setLoading(false)
-    }
-    fetchCourse()
-  }, [id])
+  if (!data) redirect("/dashboard")
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
+  const course = rowToCourse(data as CourseRow)
 
-  if (!course) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-muted-foreground">Course not found.</p>
-      </div>
-    )
-  }
-
-  return <CourseForm mode="edit" initialData={course} />
+  return <EditCourseClient course={course} />
 }

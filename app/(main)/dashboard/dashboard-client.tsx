@@ -36,7 +36,7 @@ export default function DashboardClient({ courses }: { courses: Course[] }) {
           <h1 className="text-3xl lg:text-4xl font-bold text-neutral-900 dark:text-neutral-50">Dashboard</h1>
           <Link
             className="px-6 py-3 bg-gradient-to-br from-neutral-900 to-neutral-950 dark:from-neutral-100 dark:to-neutral-50 text-neutral-50 dark:text-neutral-900 rounded-xl font-semibold shadow-md dark:shadow-black/20 hover:shadow-lg hover:scale-105 transition-all duration-200 border border-neutral-900 dark:border-neutral-100 flex items-center gap-2"
-            href="/course/add"
+            href="/dashboard/add"
           >
             <CirclePlus className="w-5 h-5" />
             <span className="hidden md:block lg:block">Add Course</span>
@@ -71,7 +71,7 @@ export default function DashboardClient({ courses }: { courses: Course[] }) {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-lg font-semibold text-neutral-600 dark:text-neutral-400 mb-2">No courses yet</p>
             <p className="text-sm text-neutral-500 mb-4">Create your first course to get started.</p>
-            <Link href="/course/add" className="px-6 py-3 bg-gradient-to-br from-neutral-900 to-neutral-950 dark:from-neutral-100 dark:to-neutral-50 text-neutral-50 dark:text-neutral-900 rounded-xl font-semibold shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 flex items-center gap-2">
+            <Link href="/dashboard/add" className="px-6 py-3 bg-gradient-to-br from-neutral-900 to-neutral-950 dark:from-neutral-100 dark:to-neutral-50 text-neutral-50 dark:text-neutral-900 rounded-xl font-semibold shadow-md hover:shadow-lg hover:scale-105 transition-all duration-200 flex items-center gap-2">
               <CirclePlus className="w-5 h-5" />
               Add Course
             </Link>
@@ -114,7 +114,7 @@ export default function DashboardClient({ courses }: { courses: Course[] }) {
                   </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-4 border-t border-neutral-200/50 dark:border-neutral-700/50">
-                  <Link className="bg-white/50 dark:bg-neutral-800/30 text-neutral-900 dark:text-neutral-50 p-2 rounded-lg border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-200/70 dark:hover:bg-neutral-700/50 hover:scale-105 transition-all duration-200" href={`/course/edit/${course.id}`}>
+                  <Link className="bg-white/50 dark:bg-neutral-800/30 text-neutral-900 dark:text-neutral-50 p-2 rounded-lg border border-neutral-300 dark:border-neutral-700 hover:bg-neutral-200/70 dark:hover:bg-neutral-700/50 hover:scale-105 transition-all duration-200" href={`/dashboard/edit/${course.id}`}>
                     <SquarePen className="w-4 h-4" />
                   </Link>
                   <button type="button" className="bg-red-500/20 dark:bg-red-400/10 text-red-700 dark:text-red-300 p-2 rounded-lg border border-red-500/30 dark:border-red-400/20 hover:bg-red-500/30 dark:hover:bg-red-400/20 hover:scale-105 transition-all duration-200" onClick={() => handleDelete(course.id)}>

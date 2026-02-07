@@ -1,11 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Navbar from "./navbar"
 import LoginForm from "./login-form"
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [showLoginForm, setShowLoginForm] = useState(false)
+
+  useEffect(() => {
+    function openLogin() {
+      setShowLoginForm(true)
+    }
+    window.addEventListener("open-login", openLogin)
+    return () => window.removeEventListener("open-login", openLogin)
+  }, [])
 
   return (
     <div className="relative flex flex-col lg:grid lg:grid-cols-12 gap-3 p-3 pb-24 lg:pb-3 h-screen bg-neutral-50 dark:bg-neutral-950">
